@@ -1,0 +1,288 @@
+
+
+% PART2
+
+% Goal : Classifying Christmas carols from other music genre by using CNN (MATLAB)
+% Final dataset was two classes of music genre including christmas carol music and Hip-hop muisc.
+% Each class has 1175 data.
+
+% written by Jisoo Kim
+
+
+
+% Steps of Algorhitms
+% 1. Convert the music data to images of spectrogram
+% 2. Change a size of spectrogram as [328 x 438] to calculate efficiently
+% 3. Change color images to grey scale to calculate efficiently
+% 4. CNN with 3 layers which are Conv1(128,32), Conv2(32,16), and Conv3(4,16)
+
+
+% As I test several different conditions,
+% Bigger size and pixel of color are not really helpful to increase accuracy
+% Despite of smaller size & grey scale, Bigger convolution and Deeper filter makes higher accuracy.
+% I verified 75.6% of validation accuracy and 72.3% of training accuracy. 
+% This can be increased if I had more time. (It took 10 hours to calculate)
+
+
+
+clc;
+clear;
+close all;
+
+
+% A size of original full file is 98GB.
+% So it was impossible to send full version of original data.
+% Original data can be downloaded at website of FMA(free music archive).
+
+% Therefore, We attached the image of spectrogram files which are already processed.
+
+
+
+
+% The following section which is the algorithms for pre-processing of data is commented out as an annotation
+
+ % load wav to image of spectrogram
+
+
+flattenFolder('D:\JEELAB\Assignment\Final_project\music_data\music_full') ;
+
+% load labelled data
+% This labelled data is from FMA (free music archive)
+
+load('D:\JEELAB\Assignment\Final_project\music_data\labeling_data\label_data.mat');
+Genre=A';
+% 1. christ 2. hiphop 3. elec 4. classic 5. rock 6. pop 7. folk 8. punk 9.jazz 10. noise
+
+
+% Original path of music data
+PathName=['D:\JEELAB\Assignment\Final_project\music_data\christ\music_data\modi_music'];
+List = dir(fullfile(PathName, ''));
+
+
+% TIme Counting 
+tic; waitbar_h = waitbar(0,'starting..');
+ 
+% Load all sound data(.mp3) and convert the sound data to image of spectrogram
+for k=3:length(List);
+    
+    % time counting
+    waitbar_str = sprintf('%s\n%s',['Time Elapsed: ',datestr(datenum(0,0,0,0,0,toc),'HH:MM:SS')],...
+    ['Time Remaining: ',datestr(datenum(0,0,0,0,0,(toc*(length(List)-2-k)/k)),'HH:MM:SS')]);
+      waitbar(k/(length(List)-2),waitbar_h,waitbar_str)
+
+
+% Reset number of genre and file.
+    Genre_number=[];
+    file_number=[];
+   
+  
+     % Load audiofile and calculate the information of the file.
+     % I use function 'try' beuase there exists some blank files.
+
+    try
+    File  = fullfile(PathName, List(k).name);
+    [y,Fs]= audioread(File);
+    info = audioinfo(File);
+
+
+    % Calculate a time information based on Fs and Duration.
+    t = 0:seconds(1/Fs):seconds(info.Duration);
+    t = t(1:end-1);
+   
+    str=List(k).name;
+    newStr=erase(str,"mp3");
+    file_number=str2num(newStr);
+    
+    
+    % find the label of music Genre to save in appropriate folder.
+    % find whether a music file is included in 10 genres.
+    % (Becuase original file has more than 10 genres)
+
+    Genre_number=mod(find(Genre==file_number), 4); 
+
+    
+        % If the file is included in 10 genres, run it. 
+        % If it doesn't, do not run it.
+        
+        if isempty(Genre_number)==1;
+        else
+          duration=fix((length(t)./Fs)./10);
+
+          % Calculate duration and decide how much epochs I will make
+          
+                if duration>5;
+                    duration=5;
+                else
+                end
+
+                
+                % Cut audiofile by several epochs
+                % duration of each epoch is 10 seconds.
+                
+                for b=1:duration;
+
+                    G_n=Genre_number(1);
+
+                    y2=y(Fs*(b-1)*10+1:Fs*10*b);
+                    
+                    %         set(gca, 'YScale', 'log');  
+
+                    % Not to visualize the spectrogram to reduce a total running time
+                    set(0,'DefaultFigureVisible','off');
+                    
+                    % Draw spectrogram
+                    spectrogram(y2, 256, [], [], Fs, 'yaxis');
+                    colormap('jet');
+                    caxis([-110 -50]);
+                    ylim([0 15]);
+                    colorbar('off');
+
+                    % Save the image of spectrogram at appropriate folder accroding to their genre.
+                    fname=['D:\JEELAB\Assignment\Final_project\music_data\10sec\1213\jet\image\' num2str(G_n) ];
+                    textname=[ num2str(file_number) '00' num2str(b) ];
+                    saveas(gca, fullfile(fname, textname), 'png');   
+                    close all;
+
+                    
+                    % Change a size of image to reduce a total running time
+                    % Change a image into grey scale to reduce a total runnig time
+                    img=imread(['D:\JEELAB\Assignment\Final_project\music_data\10sec\1213\jet\image\' num2str(G_n) '\' num2str(file_number) '00' num2str(b) '.png']);
+                    I=rgb2gray(img);
+                    img2=imresize(I,[321 614]);
+                    % imshow(img2);
+                    img2=imresize(img,[656 875]);
+                    
+                    
+                    % Save a image of spectrogram at appropriate folder accroding to their genre.
+                    imwrite(img2, ['D:\JEELAB\Assignment\Final_project\music_data\10sec\1213\jet\modi_image\' num2str(G_n) '\' num2str(file_number) '00' num2str(b) '.png']);
+                end
+                
+        end
+
+        catch 
+
+  
+        
+    end
+end
+
+% Time counting
+close(waitbar_h); clear waitbar_h waitbar_str;
+disp(['Elapsed time : ', datestr(datenum(0,0,0,0,0,toc),'HH:MM:SS.FFF')]);
+    
+    
+
+
+
+%% Load image data
+clc;
+clear;
+
+digitDatasetPath = fullfile('E:\grey');
+digitData = imageDatastore(digitDatasetPath,...
+    'IncludeSubfolders',true,'LabelSource','foldernames');
+
+
+%% Count the Label
+labelCount = countEachLabel(digitData)
+
+%
+trainNumFiles = 1050;
+[trainDigitData,valDigitData] = splitEachLabel(digitData,trainNumFiles,'randomize');
+
+
+%% Define Network Architecture
+% Define the convolutional neural network architecture.
+layers = [
+    imageInputLayer([328 438 1])
+    
+    convolution2dLayer(128,32,'Padding',1)
+    batchNormalizationLayer
+    reluLayer
+    
+    maxPooling2dLayer(2,'Stride',2)
+    
+    convolution2dLayer(32,16,'Padding',1)
+    batchNormalizationLayer
+    reluLayer
+    
+    maxPooling2dLayer(2,'Stride',2)
+    
+    convolution2dLayer(4,16,'Padding',1)
+    batchNormalizationLayer
+    reluLayer
+    
+    maxPooling2dLayer(2,'Stride',2)
+
+    fullyConnectedLayer(2)
+    softmaxLayer
+    classificationLayer];
+
+
+
+%% Options
+options = trainingOptions('sgdm',...
+    'MaxEpochs',6, ...
+    'ValidationData',valDigitData,...
+    'ValidationFrequency',30,...
+    'Verbose',true,...
+    'Plots','training-progress','ExecutionEnvironment','cpu');
+
+net = trainNetwork(trainDigitData,layers,options);
+
+
+
+%% Get the final training accuracy and validation accuracy
+
+predictedLabels = classify(net,valDigitData);
+valLabels = valDigitData.Labels;
+
+validation_accuracy = sum(predictedLabels == valLabels)/numel(valLabels);
+
+
+% Get training accuracy
+predtrainLabels = classify(net,trainDigitData);
+trainLables = trainDigitData.Labels;
+
+training_accuracy = sum(predtrainLabels == trainLables)/numel(trainLables);
+
+
+fprintf('The final training accuracy is %f\n', training_accuracy(1))
+fprintf('The final validation accuracy is %f\n', validation_accuracy(1))
+
+
+%% Visualize the features (Conv1)
+
+% layer 2 is corresponding to convolution1
+layer = 2; name = net.Layers(layer).Name;
+
+channels = 1:32;
+I = deepDreamImage(net,layer,channels,'PyramidLevels',1);
+
+figure(1);
+I = imtile(I,'ThumbnailSize',[64 64]);
+imshow(I); title(['Layer ',name,' Features']);
+
+%% Visualize the features (Conv2)
+
+% layer 6 is corresponding to convolution2
+layer2 = 6; channels2 = 1:16;
+I2 = deepDreamImage(net,layer2,channels2,'PyramidLevels',1);
+
+figure(2);
+I2 = imtile(I2,'ThumbnailSize',[64 64]);
+imshow(I2); name2 = net.Layers(layer).Name;
+title(['Layer ',name2,' Features']);
+
+
+%% Visualize the features (Conv3)
+
+% layer 10 is corresponding to convolution3
+layer3 = 10; channels3 = 1:16;
+I3 = deepDreamImage(net,layer3,channels3,'PyramidLevels',1);
+
+figure(3);
+I3 = imtile(I3,'ThumbnailSize',[64 64]);
+imshow(I3); name3 = net.Layers(layer).Name;
+title(['Layer ',name3,' Features']);
+
